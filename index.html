@@ -574,6 +574,12 @@ async function loadFromSheet(){
     _resumeUrl:r.Resume_URL||'',
     _photoUrl:r.Photo_URL||''
   }));
+  // Restore photos from Drive URLs
+  candidates.forEach(c=>{
+    if(c._photoUrl && !c.Photo){
+      c.Photo=c._photoUrl; // will be loaded as URL in avatar
+    }
+  });
   candidates.forEach(c=>c._total=totalScore(c));
   order=candidates.map(c=>String(c.ID));
   order.sort((a,b)=>{
@@ -815,7 +821,8 @@ function renderList(){
       sector:parseInt(c.Score_Sector)||0
     };
     const culture=parseInt(c.Score_Culture)||0;
-    const avatarInner=c.Photo?`<img src="${c.Photo}" alt="">`:`<span style="color:${col.text}">${ini}</span>`;
+    const photoSrc=c.Photo||(c._photoUrl||'');
+    const avatarInner=photoSrc?`<img src="${photoSrc}" alt="" onerror="this.style.display='none'">`:`<span style="color:${col.text}">${ini}</span>`;
     const linkedin=c.LinkedIn||c.linkedin||'';
     const histHTML=[c.History1,c.History2,c.History3].filter(Boolean).map(h=>{
       const p=h.split('|');return`<div class="hist-item"><span>${(p[0]||h).trim()}</span>${p[1]?' · '+p[1].trim():''}</div>`;
@@ -870,7 +877,7 @@ function renderList(){
           <input type="file" accept=".pdf,.doc,.docx" data-type="linkedin">
           <i class="ti ti-paperclip" style="font-size:11px"></i> ${(c._linkedinData||c._resumeData)?'PDF attached ✓':'Attach PDF'}
         </label>
-        ${(c._linkedinData||c._resumeData)?`<button onclick="openPdfViewer('${cid}','${c._resumeData?'resume':'linkedin'}')" class="attach-btn" style="width:100%;margin-bottom:4px;color:var(--green);font-size:11px"><i class="ti ti-eye" style="font-size:11px"></i> View PDF</button>`:''}
+        ${(c._linkedinUrl||c._resumeUrl)?`<a href="${c._resumeUrl||c._linkedinUrl}" target="_blank" class="attach-btn" style="width:100%;margin-bottom:4px;color:var(--green);font-size:11px;text-decoration:none;justify-content:center;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:11px"></i> View PDF</a>`:(c._linkedinData||c._resumeData)?`<button onclick="openPdfViewer('${cid}','${c._resumeData?'resume':'linkedin'}')" class="attach-btn" style="width:100%;margin-bottom:4px;color:var(--green);font-size:11px"><i class="ti ti-eye" style="font-size:11px"></i> View PDF</button>`:''}
         <button class="ai-score-btn" title="Re-score using attached PDF" style="width:100%;display:${(c._linkedinData||c._resumeData)?'flex':'none'}">
           <i class="ti ti-sparkles" style="font-size:11px"></i> AI re-score
         </button>
@@ -1278,38 +1285,45 @@ function openPdfViewer(cid, type){
 // ── DRIVE UPLOAD ──────────────────────────────────────────
 async function uploadToDrive(cid, file, fileType){
   if(!SCRIPT_URL) return null;
+  setSyncStatus('saving','Uploading to Drive...');
   const b64 = await new Promise(res=>{
     const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.readAsDataURL(file);
   });
   try{
-    const resp = await fetch('/api/proxy',{
+    // Go DIRECTLY to Apps Script — bypasses Vercel 4.5MB body limit
+    const resp = await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({
-        scriptUrl:SCRIPT_URL,
-        payload:{
-          action:'uploadFile',
-          candidateId:cid,
-          fileType:fileType,
-          fileName:cid+'_'+fileType+'_'+file.name,
-          mimeType:file.type||'application/pdf',
-          fileData:b64
-        }
+        action:'uploadFile',
+        candidateId:String(cid),
+        fileType:fileType,
+        fileName:String(cid)+'_'+fileType+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),
+        mimeType:file.type||'application/pdf',
+        fileData:b64
       })
     });
     const data = await resp.json();
     if(data.ok && data.viewUrl){
       const c = candidates.find(x=>String(x.ID)===String(cid));
       if(c){
-        if(fileType==='linkedin') c._linkedinUrl=data.viewUrl;
-        else if(fileType==='resume') c._resumeUrl=data.viewUrl;
-        else if(fileType==='photo') c._photoUrl=data.viewUrl;
+        if(fileType==='linkedin'){c._linkedinUrl=data.viewUrl;}
+        else if(fileType==='resume'){c._resumeUrl=data.viewUrl;}
+        else if(fileType==='photo'){c._photoUrl=data.viewUrl;}
       }
-      setSyncStatus('ok','File saved to Drive ✓');
-      setTimeout(()=>setSyncStatus('ok','Synced'),3000);
+      setSyncStatus('ok','Saved to Drive ✓');
+      setTimeout(()=>setSyncStatus('ok','Synced · Sheets'),3000);
       return data.viewUrl;
+    } else {
+      console.error('Drive upload response:', data);
+      setSyncStatus('error','Drive upload failed');
+      setTimeout(()=>setSyncStatus('ok','Synced · Sheets'),3000);
     }
-  }catch(e){ console.error('Drive upload failed:', e); }
+  }catch(e){
+    console.error('Drive upload failed:', e);
+    setSyncStatus('error','Drive upload failed');
+    setTimeout(()=>setSyncStatus('ok','Synced · Sheets'),3000);
+  }
   return null;
 }
 
