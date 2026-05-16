@@ -482,11 +482,9 @@ function totalScore(c){
   const w=getWeights();
   const techWeightSum=SCORING_CRITERIA.reduce((s,cr)=>s+cr.weight,0)||100;
   let techScore=0;
-  let techCount=0;
   SCORING_CRITERIA.forEach(cr=>{
-    const val=parseInt(c['Score_'+cr.key])||0;
+    const val=getCandidateTechScore(c,cr);
     techScore+=val*cr.weight;
-    if(val>0)techCount++;
   });
   techScore=techScore/techWeightSum;
   const hasCulture=(parseInt(c.Score_Culture)||0)>0;
