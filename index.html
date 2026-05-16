@@ -131,6 +131,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .scoring-notes.expanded .notes-short{display:none}
 .scoring-notes.expanded .notes-full{display:inline!important}
 .scoring-notes-empty{font-size:10px;color:var(--muted);line-height:1.4;margin-top:4px;font-style:italic}
+.scoring-notes-wide{font-size:11px;color:rgba(126,211,33,0.85);line-height:1.5;font-style:italic;padding:5px 7px;background:rgba(126,211,33,0.06);border-radius:4px;border:1px solid rgba(126,211,33,0.15)}
+.scoring-notes-wide.expanded .notes-short{display:none}
+.scoring-notes-wide.expanded .notes-full{display:inline!important}
 .file-link span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .file-link:hover{color:#a8e052}
 .ai-score-btn{font-family:inherit;font-size:10px;background:rgba(126,211,33,0.1);border:1px solid rgba(126,211,33,0.35);border-radius:var(--radius-sm);padding:4px 7px;color:var(--green);cursor:pointer;display:flex;align-items:center;gap:4px;width:100%;justify-content:center;transition:all 0.15s}
@@ -863,32 +866,23 @@ function renderList(){
       <div class="bars">${barsHTML}<div style="font-size:9px;color:var(--muted);margin-top:2px">Click bars to edit</div></div>
       <div class="history">${histHTML}<div class="edu">${c.Education||''}</div>${rationaleHTML}</div>
       <div class="attach-col">
-        <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px">
-          <label class="attach-btn${c._linkedinData||c._linkedinUrl?' has-file':''}" style="flex:1;cursor:pointer" title="Attach LinkedIn PDF">
-            <input type="file" accept=".pdf" data-type="linkedin">
-            <i class="ti ti-brand-linkedin" style="font-size:11px"></i> ${c._linkedinData||c._linkedinUrl?'LinkedIn ✓':'LinkedIn · Attach'}
-          </label>
-          ${(c._linkedinUrl||c._linkedinData)?`<button onclick="${c._linkedinUrl?`window.open('`+c._linkedinUrl+`','_blank')`:`openPdfViewer('`+cid+`','linkedin')`}" class="attach-btn" style="flex:0 0 auto;padding:3px 8px;font-size:10px;color:var(--green)">View</button>`:''}
-        </div>
-        ${linkedinFile}
-        <div style="display:flex;gap:4px;align-items:center">
-          <label class="attach-btn${c._resumeData||c._resumeUrl?' has-file':''}" style="flex:1;cursor:pointer" title="Attach Resume">
-            <input type="file" accept=".pdf,.doc,.docx" data-type="resume">
-            <i class="ti ti-paperclip" style="font-size:11px"></i> ${c._resumeData||c._resumeUrl?'Resume ✓':'Resume · Attach'}
-          </label>
-          ${(c._resumeUrl||c._resumeData)?`<button onclick="${c._resumeUrl?`window.open('`+c._resumeUrl+`','_blank')`:`openPdfViewer('`+cid+`','resume')`}" class="attach-btn" style="flex:0 0 auto;padding:3px 8px;font-size:10px;color:var(--green)">View</button>`:''}
-        </div>
-        ${resumeFile}
-        <button class="ai-score-btn" title="Re-score using attached PDF" style="display:none">
-          <i class="ti ti-sparkles" style="font-size:12px"></i> AI re-score
+        <label class="attach-btn${(c._linkedinData||c._resumeData)?' has-file':''}" style="width:100%;cursor:pointer;margin-bottom:4px" title="Attach LinkedIn PDF or Resume">
+          <input type="file" accept=".pdf,.doc,.docx" data-type="linkedin">
+          <i class="ti ti-paperclip" style="font-size:11px"></i> ${(c._linkedinData||c._resumeData)?'PDF attached ✓':'Attach PDF'}
+        </label>
+        ${(c._linkedinData||c._resumeData)?`<button onclick="openPdfViewer('${cid}','${c._resumeData?'resume':'linkedin'}')" class="attach-btn" style="width:100%;margin-bottom:4px;color:var(--green);font-size:11px"><i class="ti ti-eye" style="font-size:11px"></i> View PDF</button>`:''}
+        <button class="ai-score-btn" title="Re-score using attached PDF" style="width:100%;display:${(c._linkedinData||c._resumeData)?'flex':'none'}">
+          <i class="ti ti-sparkles" style="font-size:11px"></i> AI re-score
         </button>
-        ${c.AI_Rationale?`<div class="scoring-notes" onclick="this.classList.toggle('expanded')" title="Click to expand/collapse" style="cursor:pointer">
-          <i class="ti ti-info-circle" style="font-size:10px"></i>
-          <span class="notes-short">${c.AI_Rationale.substring(0,80)}${c.AI_Rationale.length>80?'…':''}</span>
-          <span class="notes-full" style="display:none">${c.AI_Rationale}</span>
-        </div>`:'<div class="scoring-notes-empty">Attach PDF to score</div>'}
       </div>
-      <div class="notes-col"><textarea placeholder="Notes… (auto-saves)">${c.Notes||''}</textarea></div>
+      <div class="notes-col">
+        <textarea placeholder="Notes… (auto-saves)">${c.Notes||''}</textarea>
+        ${c.AI_Rationale?`<div class="scoring-notes-wide" onclick="this.classList.toggle('expanded')" title="Click to expand" style="cursor:pointer;margin-top:4px">
+          <i class="ti ti-info-circle" style="font-size:10px"></i>
+          <span class="notes-short">${c.AI_Rationale.substring(0,120)}${c.AI_Rationale.length>120?'…':''}</span>
+          <span class="notes-full" style="display:none">${c.AI_Rationale}</span>
+        </div>`:''}
+      </div>
       <div class="status-col">
         <select class="status-select">${['Active','Contacted','Screening','Interviewing','On Hold','Passed'].map(sv=>`<option${(c.Status||'Active')===sv?' selected':''}>${sv}</option>`).join('')}</select>
         <button class="del-btn"><i class="ti ti-trash" style="font-size:11px"></i> Delete</button>
@@ -1098,13 +1092,20 @@ async function addCandidate(){
 
 // ── NEW SEARCH / SAVE ─────────────────────────────────────
 function saveProjectFile(){
-  const title=document.getElementById('searchTitleDisplay').textContent;
-  const html=document.documentElement.outerHTML;
+  const title=document.getElementById('searchTitleDisplay').textContent||'HFH_Search';
+  // Embed current candidates state into the HTML
+  const stateScript='<script id="savedState">window.__savedCandidates='+JSON.stringify(candidates)+';<\/script>';
+  let html=document.documentElement.outerHTML;
+  // Remove any existing saved state
+  html=html.replace(/<script id="savedState">.*?<\/script>/s,'');
+  html=html.replace('</head>',stateScript+'</head>');
   const blob=new Blob([html],{type:'text/html'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=(title.replace(/[^a-z0-9]/gi,'_').substring(0,40)||'HFH_Search')+'_'+new Date().toISOString().slice(0,10)+'.html';
+  a.download=(title.replace(/[^a-z0-9]/gi,'_').substring(0,40))+'_'+new Date().toISOString().slice(0,10)+'.html';
   a.click();
+  setSyncStatus('ok','File saved ✓');
+  setTimeout(()=>setSyncStatus('ok','Synced'),3000);
 }
 function startNewSearch(){
   const title=document.getElementById('newSearchTitle').value.trim();
