@@ -464,9 +464,15 @@ function barColor(v){
   if(v>=80)return'#7ed321';if(v>=65)return'#b8d400';
   if(v>=50)return'#f5c518';if(v>=35)return'#f59018';return'#ff4136';
 }
+function getCandidateTechScore(c,cr){
+  var dynamicVal=parseInt(c['Score_'+cr.key])||0;
+  if(dynamicVal>0)return dynamicVal;
+  var fallback={c1:'Score_Title',c2:'Score_Edu',c3:'Score_Scale',c4:'Score_Sector'};
+  if(fallback[cr.key])return parseInt(c[fallback[cr.key]])||0;
+  return 0;
+}
 function hasAnyScore(c){
   const hasTech=SCORING_CRITERIA.some(cr=>getCandidateTechScore(c,cr)>0);
-  // Also check original columns directly
   const hasOriginal=(parseInt(c.Score_Title)||0)>0||(parseInt(c.Score_Edu)||0)>0;
   const hasCulture=(parseInt(c.Score_Culture)||0)>0;
   return hasTech||hasOriginal||hasCulture;
@@ -520,8 +526,16 @@ async function apiCall(params){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({scriptUrl:SCRIPT_URL,payload:params})
     });
+    if(!r.ok)throw new Error('proxy '+r.status);
     return await r.json();
-  }catch(e){console.error('apiCall error:',e);return null;}
+  }catch(e){
+    console.error('apiCall error:',e);
+    // Try direct call as fallback
+    try{
+      const r2=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(params)});
+      return await r2.json();
+    }catch(e2){return null;}
+  }
 }
 function scheduleSave(cid,field,value){
   setSyncStatus('saving','Saving…');
