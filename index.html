@@ -1294,17 +1294,20 @@ async function uploadToDrive(cid, file, fileType){
     const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.readAsDataURL(file);
   });
   try{
-    // Go DIRECTLY to Apps Script — bypasses Vercel 4.5MB body limit
-    const resp = await fetch(SCRIPT_URL,{
+    // Route through /api/proxy (now with 50MB limit)
+    const resp = await fetch('/api/proxy',{
       method:'POST',
-      headers:{'Content-Type':'text/plain'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        action:'uploadFile',
-        candidateId:String(cid),
-        fileType:fileType,
-        fileName:String(cid)+'_'+fileType+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),
-        mimeType:file.type||'application/pdf',
-        fileData:b64
+        scriptUrl:SCRIPT_URL,
+        payload:{
+          action:'uploadFile',
+          candidateId:String(cid),
+          fileType:fileType,
+          fileName:String(cid)+'_'+fileType+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),
+          mimeType:file.type||'application/pdf',
+          fileData:b64
+        }
       })
     });
     const data = await resp.json();
