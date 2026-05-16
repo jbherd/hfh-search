@@ -465,9 +465,11 @@ function barColor(v){
   if(v>=50)return'#f5c518';if(v>=35)return'#f59018';return'#ff4136';
 }
 function hasAnyScore(c){
-  const hasTech=SCORING_CRITERIA.some(cr=>(parseInt(c['Score_'+cr.key])||0)>0);
+  const hasTech=SCORING_CRITERIA.some(cr=>getCandidateTechScore(c,cr)>0);
+  // Also check original columns directly
+  const hasOriginal=(parseInt(c.Score_Title)||0)>0||(parseInt(c.Score_Edu)||0)>0;
   const hasCulture=(parseInt(c.Score_Culture)||0)>0;
-  return hasTech||hasCulture;
+  return hasTech||hasOriginal||hasCulture;
 }
 function totalScore(c){
   if(!hasAnyScore(c))return null;
@@ -805,7 +807,7 @@ function renderList(){
     }).join('');
     const hasAnyTech=SCORING_CRITERIA.some(cr=>(parseInt(c['Score_'+cr.key])||0)>0);
     const barsHTML=SCORING_CRITERIA.map(cr=>{
-      const val=parseInt(c['Score_'+cr.key])||0;
+      const val=getCandidateTechScore(c,cr);
       const shortLabel=cr.label.split(' ')[0].substring(0,6);
       return `<div class="bar-row">
         <span class="bar-label" title="${cr.label}">${shortLabel}</span>
@@ -835,7 +837,7 @@ function renderList(){
         <div class="person-loc"><i class="ti ti-map-pin" style="font-size:10px"></i> ${c.Location||''}</div>
         <div class="person-links">
           ${linkedin?'<a class="bio-link" href="'+linkedin+'" target="_blank" rel="noopener" title="View LinkedIn profile"><i class="ti ti-brand-linkedin" style="font-size:20px"></i></a>':''}
-          <span class="tier-badge ${t.cls}">${t.label}${s!==null?" · "+s:""}</span>
+          ${s!==null?`<span class="tier-badge ${t.cls}">${t.label} · ${s}</span>`:''}
         </div>
       </div>
       <div class="score-col">
