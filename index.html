@@ -551,7 +551,12 @@ async function loadFromSheet(){
     renderList();
     return;
   }
-  candidates=data.map(r=>({...r,_total:0}));
+  candidates=data.map(r=>({
+    ...r,_total:0,
+    _linkedinUrl:r.LinkedIn_URL||'',
+    _resumeUrl:r.Resume_URL||'',
+    _photoUrl:r.Photo_URL||''
+  }));
   candidates.forEach(c=>c._total=totalScore(c));
   order=candidates.map(c=>String(c.ID));
   order.sort((a,b)=>{
@@ -590,6 +595,8 @@ function applyPhoto(cid,file){
     const wrap=document.querySelector(`.avatar-wrap[data-cid="${cid}"]`);
     if(wrap)wrap.querySelector('.avatar').innerHTML=`<img src="${e.target.result}" alt="">`;
     scheduleSave(cid,'Photo',e.target.result);
+    // Also upload to Drive for persistence
+    uploadToDrive(cid, file, 'photo').catch(function(){});
   };
   reader.readAsDataURL(file);
 }
@@ -843,19 +850,19 @@ function renderList(){
       <div class="history">${histHTML}<div class="edu">${c.Education||''}</div>${rationaleHTML}</div>
       <div class="attach-col">
         <div style="display:flex;gap:4px;align-items:center">
-          <label class="attach-btn${c._linkedinData?' has-file':''}" title="Attach LinkedIn PDF" style="flex:1">
+          <label class="attach-btn${c._linkedinData||c._linkedinUrl?' has-file':''}" title="Attach LinkedIn PDF" style="flex:1">
             <input type="file" accept=".pdf" data-type="linkedin">
-            <i class="ti ti-brand-linkedin" style="font-size:12px"></i> ${c._linkedinData?'LinkedIn ✓':'LinkedIn PDF'}
+            <i class="ti ti-brand-linkedin" style="font-size:12px"></i> ${c._linkedinData||c._linkedinUrl?'LinkedIn ✓':'LinkedIn PDF'}
           </label>
-          ${c._linkedinData?`<button onclick="openPdfViewer('${cid}','linkedin')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View LinkedIn PDF"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
+          ${c._linkedinUrl?`<a href="${c._linkedinUrl}" target="_blank" class="attach-btn" style="flex:0 0 auto;padding:4px 6px;text-decoration:none" title="Open in Drive"><i class="ti ti-external-link" style="font-size:11px"></i></a>`:c._linkedinData?`<button onclick="openPdfViewer('${cid}','linkedin')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View LinkedIn PDF"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
         </div>
         ${linkedinFile}
         <div style="display:flex;gap:4px;align-items:center">
-          <label class="attach-btn${c._resumeData?' has-file':''}" title="Attach resume PDF" style="flex:1">
+          <label class="attach-btn${c._resumeData||c._resumeUrl?' has-file':''}" title="Attach resume PDF" style="flex:1">
             <input type="file" accept=".pdf,.doc,.docx" data-type="resume">
-            <i class="ti ti-paperclip" style="font-size:12px"></i> ${c._resumeData?'Resume ✓':'Resume'}
+            <i class="ti ti-paperclip" style="font-size:12px"></i> ${c._resumeData||c._resumeUrl?'Resume ✓':'Resume'}
           </label>
-          ${c._resumeData?`<button onclick="openPdfViewer('${cid}','resume')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View Resume"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
+          ${c._resumeUrl?`<a href="${c._resumeUrl}" target="_blank" class="attach-btn" style="flex:0 0 auto;padding:4px 6px;text-decoration:none" title="Open in Drive"><i class="ti ti-external-link" style="font-size:11px"></i></a>`:c._resumeData?`<button onclick="openPdfViewer('${cid}','resume')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View Resume"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
         </div>
         ${resumeFile}
         <button class="ai-score-btn" title="Re-score using attached PDF" style="display:none">
@@ -1207,6 +1214,46 @@ function openPdfViewer(cid, type){
   document.getElementById('pdfViewerTitle').textContent = c.Name + ' — ' + name;
   document.getElementById('pdfViewerContent').textContent = text || 'No text extracted yet. Re-attach the PDF to extract text.';
   document.getElementById('pdfViewerModal').classList.remove('hidden');
+}
+
+
+
+// ── DRIVE UPLOAD ──────────────────────────────────────────
+async function uploadToDrive(cid, file, fileType){
+  if(!SCRIPT_URL) return null;
+  const b64 = await new Promise(res=>{
+    const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.readAsDataURL(file);
+  });
+  try{
+    const resp = await fetch('/api/proxy',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        scriptUrl:SCRIPT_URL,
+        payload:{
+          action:'uploadFile',
+          candidateId:cid,
+          fileType:fileType,
+          fileName:cid+'_'+fileType+'_'+file.name,
+          mimeType:file.type||'application/pdf',
+          fileData:b64
+        }
+      })
+    });
+    const data = await resp.json();
+    if(data.ok && data.viewUrl){
+      const c = candidates.find(x=>String(x.ID)===String(cid));
+      if(c){
+        if(fileType==='linkedin') c._linkedinUrl=data.viewUrl;
+        else if(fileType==='resume') c._resumeUrl=data.viewUrl;
+        else if(fileType==='photo') c._photoUrl=data.viewUrl;
+      }
+      setSyncStatus('ok','File saved to Drive ✓');
+      setTimeout(()=>setSyncStatus('ok','Synced'),3000);
+      return data.viewUrl;
+    }
+  }catch(e){ console.error('Drive upload failed:', e); }
+  return null;
 }
 
 
