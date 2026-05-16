@@ -914,6 +914,10 @@ function renderList(){
           if(!c)return;
           if(type==='linkedin'){c._linkedinData=ev.target.result;c._linkedinName=f.name;}
           else{c._resumeData=ev.target.result;c._resumeName=f.name;}
+          // Upload to Google Drive for permanent storage
+          uploadToDrive(cid, f, type).then(function(url){
+            if(url) renderList(); // refresh to show View button
+          }).catch(function(e){console.error('Drive upload:',e);});
           // update button appearance
           const btn=inp.closest('.attach-btn');
           if(btn){
