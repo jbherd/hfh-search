@@ -863,20 +863,20 @@ function renderList(){
       <div class="bars">${barsHTML}<div style="font-size:9px;color:var(--muted);margin-top:2px">Click bars to edit</div></div>
       <div class="history">${histHTML}<div class="edu">${c.Education||''}</div>${rationaleHTML}</div>
       <div class="attach-col">
-        <div style="display:flex;gap:4px;align-items:center">
-          <label class="attach-btn${c._linkedinData||c._linkedinUrl?' has-file':''}" title="Attach LinkedIn PDF" style="flex:1">
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px">
+          <label class="attach-btn${c._linkedinData||c._linkedinUrl?' has-file':''}" style="flex:1;cursor:pointer" title="Attach LinkedIn PDF">
             <input type="file" accept=".pdf" data-type="linkedin">
-            <i class="ti ti-brand-linkedin" style="font-size:12px"></i> ${c._linkedinData||c._linkedinUrl?'LinkedIn ✓':'LinkedIn PDF'}
+            <i class="ti ti-brand-linkedin" style="font-size:11px"></i> ${c._linkedinData||c._linkedinUrl?'LinkedIn ✓':'LinkedIn · Attach'}
           </label>
-          ${c._linkedinUrl?`<a href="${c._linkedinUrl}" target="_blank" class="attach-btn" style="flex:0 0 auto;padding:4px 6px;text-decoration:none" title="Open in Drive"><i class="ti ti-external-link" style="font-size:11px"></i></a>`:c._linkedinData?`<button onclick="openPdfViewer('${cid}','linkedin')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View LinkedIn PDF"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
+          ${(c._linkedinUrl||c._linkedinData)?`<button onclick="${c._linkedinUrl?`window.open('`+c._linkedinUrl+`','_blank')`:`openPdfViewer('`+cid+`','linkedin')`}" class="attach-btn" style="flex:0 0 auto;padding:3px 8px;font-size:10px;color:var(--green)">View</button>`:''}
         </div>
         ${linkedinFile}
         <div style="display:flex;gap:4px;align-items:center">
-          <label class="attach-btn${c._resumeData||c._resumeUrl?' has-file':''}" title="Attach resume PDF" style="flex:1">
+          <label class="attach-btn${c._resumeData||c._resumeUrl?' has-file':''}" style="flex:1;cursor:pointer" title="Attach Resume">
             <input type="file" accept=".pdf,.doc,.docx" data-type="resume">
-            <i class="ti ti-paperclip" style="font-size:12px"></i> ${c._resumeData||c._resumeUrl?'Resume ✓':'Resume'}
+            <i class="ti ti-paperclip" style="font-size:11px"></i> ${c._resumeData||c._resumeUrl?'Resume ✓':'Resume · Attach'}
           </label>
-          ${c._resumeUrl?`<a href="${c._resumeUrl}" target="_blank" class="attach-btn" style="flex:0 0 auto;padding:4px 6px;text-decoration:none" title="Open in Drive"><i class="ti ti-external-link" style="font-size:11px"></i></a>`:c._resumeData?`<button onclick="openPdfViewer('${cid}','resume')" class="attach-btn" style="flex:0 0 auto;padding:4px 6px" title="View Resume"><i class="ti ti-eye" style="font-size:11px"></i></button>`:''}
+          ${(c._resumeUrl||c._resumeData)?`<button onclick="${c._resumeUrl?`window.open('`+c._resumeUrl+`','_blank')`:`openPdfViewer('`+cid+`','resume')`}" class="attach-btn" style="flex:0 0 auto;padding:3px 8px;font-size:10px;color:var(--green)">View</button>`:''}
         </div>
         ${resumeFile}
         <button class="ai-score-btn" title="Re-score using attached PDF" style="display:none">
