@@ -508,10 +508,10 @@ function setSyncStatus(state,text){
 async function apiCall(params){
   if(!SCRIPT_URL)return null;
   try{
-    const r=await fetch('/api/proxy',{
+    const r=await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({scriptUrl:SCRIPT_URL,payload:params})
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(params)
     });
     return await r.json();
   }catch(e){console.error('apiCall error:',e);return null;}
